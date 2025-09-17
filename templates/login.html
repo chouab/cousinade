@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Connexion</h1>
+
+<form method="post" action="/login" class="max-w-md bg-white p-6 rounded-xl shadow">
+  <div class="form-row">
+    <label>Email</label>
+    <input type="email" name="email" required placeholder="prenom.nom@exemple.com">
+  </div>
+  {% if error %}
+    <p class="text-red-600 mb-2">{{ error }}</p>
+  {% endif %}
+  <button class="bg-blue-600 text-white px-4 py-2 rounded">Se connecter</button>
+</form>
+{% endblock %}

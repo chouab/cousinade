@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}RSVP – par personne{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-semibold mb-4">Présence par personne</h1>
+<p class="text-gray-600 mb-6">
+  Cochez, pour chaque membre de votre foyer, les créneaux où il/elle sera présent(e).
+</p>
+
+<form method="post" action="/rsvp/save" class="space-y-6">
+  <!-- Onglets -->
+  <div class="border-b">
+    <nav class="flex gap-2" role="tablist">
+      {% for w in weekends %}
+        <button type="button"
+                class="tab-btn {% if loop.first %}is-active{% endif %}"
+                data-tab-target="#tab-{{ w.id }}"
+                role="tab"
+                aria-selected="{{ 'true' if loop.first else 'false' }}">
+          {{ w.name }}
+        </button>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <!-- Panneaux -->
+  {% for w in weekends %}
+    <section id="tab-{{ w.id }}" class="tab-panel {% if not loop.first %}tab-hidden{% endif %}" role="tabpanel">
+
+      <!-- ====== Ton foyer (éditable) ====== -->
+      <div class="bg-white rounded-xl shadow border mt-6 overflow-x-auto">
+        <div class="p-4">
+          <table class="min-w-[720px] w-full text-sm border-collapse">
+            <thead>
+              <tr class="text-left text-gray-600">
+                <th class="py-2 pr-2"></th>
+                {% for s in w.slots %}
+                  <th class="py-2 px-2">
+                    {{ s.label }}<br>
+                    <span class="text-xs text-gray-500">
+                      {{ s.date.strftime('%a %d/%m').replace('Mon','Lun').replace('Tue','Mar').replace('Wed','Mer').replace('Thu','Jeu').replace('Fri','Ven').replace('Sat','Sam').replace('Sun','Dim') }}
+                    </span>
+                  </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in household %}
+                <tr class="border-t">
+                  <td class="py-2 pr-2 font-medium whitespace-nowrap">{{ m.first_name }} {{ m.last_name }}</td>
+                  {% for s in w.slots %}
+                    <td class="py-2 px-2 text-center">
+                      <input type="checkbox" name="p_{{ m.id }}_{{ s.id }}"
+                             {% if present_map.get((m.id, s.id)) %}checked{% endif %}>
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ====== Aperçu des autres (lecture seule) ====== -->
+      <div class="bg-white rounded-xl shadow border mt-4 overflow-x-auto">
+        <div class="px-4 py-3 border-b flex items-center justify-between">
+          <h2 class="text-lg font-bold">Réponses des autres (lecture seule)</h2>
+          {% set others = others_by_weekend.get(w.id) %}
+          {% if others and others.members|length > 0 %}
+            <span class="text-sm text-gray-500">{{ others.members|length }} participant(s) ayant répondu</span>
+          {% else %}
+            <span class="text-sm text-gray-400">Aucune réponse pour ce week-end pour l’instant</span>
+          {% endif %}
+        </div>
+        {% if others and others.members|length > 0 %}
+        <div class="p-4">
+          <table class="min-w-[720px] w-full text-sm border-collapse">
+            <thead>
+              <tr class="text-left text-gray-600">
+                <th class="py-2 pr-2"></th>
+                {% for s in w.slots %}
+                  <th class="py-2 px-2">
+                    {{ s.label }}<br>
+                    <span class="text-xs text-gray-500">
+                      {{ s.date.strftime('%a %d/%m').replace('Mon','Lun').replace('Tue','Mar').replace('Wed','Mer').replace('Thu','Jeu').replace('Fri','Ven').replace('Sat','Sam').replace('Sun','Dim') }}
+                    </span>
+                  </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in others.members %}
+                <tr class="border-t">
+                  <td class="py-2 pr-2 whitespace-nowrap">{{ m.first_name }} {{ m.last_name }}</td>
+                  {% for s in w.slots %}
+                    <td class="py-2 px-2 text-center">
+                      {% if (m.id, s.id) in others_present %}
+                        ✔️
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+              <tr class="border-t bg-gray-50">
+                <td class="py-2 pr-2 font-semibold">Total global</td>
+                {% for s in w.slots %}
+                  <td class="py-2 px-2 text-center font-semibold">
+                    {{ totals.get(s.id, 0) }}
+                  </td>
+                {% endfor %}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+
+
+    </section>
+  {% endfor %}
+
+  <div class="flex gap-3 pt-2">
+    <button class="bg-blue-600 text-white px-5 py-2 rounded shadow hover:bg-blue-700">💾 Enregistrer</button>
+    <a href="/" class="px-5 py-2 rounded border">Annuler</a>
+  </div>
+</form>
+
+<!-- JS onglets -->
+<script>
+  const btns = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+
+  function activate(targetId) {
+    btns.forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected','false'); });
+    panels.forEach(p => p.classList.add('tab-hidden'));              // <-- ici
+    const btn = document.querySelector(`.tab-btn[data-tab-target="#${targetId}"]`);
+    const panel = document.getElementById(targetId);
+    if (btn && panel) {
+      btn.classList.add('is-active'); btn.setAttribute('aria-selected','true');
+      panel.classList.remove('tab-hidden');                           // <-- et ici
+    }
+  }
+
+  btns.forEach(b => b.addEventListener('click', () => {
+    const target = b.getAttribute('data-tab-target').slice(1);
+    activate(target);
+    history.replaceState(null, '', '#' + target);
+  }));
+
+  if (location.hash) activate(location.hash.slice(1));
+</script>
+<!-- Styles onglets -->
+<style>
+  .tab-btn{padding:.5rem .75rem;border-bottom:2px solid transparent;border-radius:.25rem .25rem 0 0;font-size:.95rem;color:#374151}
+  .tab-btn:hover{background:#f3f4f6}
+  .tab-btn.is-active{border-color:#2563eb;color:#1d4ed8;font-weight:600;background:#eff6ff}
+  .tab-hidden{display:none}
+</style>
+
+{% endblock %}

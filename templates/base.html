@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}Cousinade{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .form-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+  .form-row>label{min-width:10rem;font-weight:700}
+  .form-row>input,.form-row>select,.form-row>textarea{
+    flex:1 1 auto;border:1px solid #e5e7eb;border-radius:.375rem;padding:.25rem .5rem
+  }
+</style>
+  </head>
+  <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+<nav class="bg-white border-b border-gray-200 sticky top-0 z-40">
+  <!-- Pleine largeur, aligné à gauche -->
+  <div class="px-4">
+    <div class="h-14 flex items-center justify-between">
+
+      {% if user %}
+      <!-- Bloc gauche : marque + menu -->
+      <div class="flex items-center gap-4">
+        <a href="/" class="font-bold text-blue-700 text-lg">👨‍👩‍👧‍👦 Cousinade</a>
+        <!-- Liens desktop -->
+        {% set current = request.url.path %}
+        <ul class="hidden md:flex items-center text-sm text-gray-700">
+          <li><a href="/" class="nav-link {{ 'active' if current == '/' else '' }}">Annuaire</a></li>
+          <li><span class="sep"></span></li>
+          <li><a href="/rsvp" class="nav-link {{ 'active' if current.startswith('/rsvp') else '' }}">Organisation 2026</a></li>
+          <li><span class="sep"></span></li>
+          <li><a href="/edit" class="nav-link {{ 'active' if current.startswith('/member/' ~ user.id) else '' }}">Mes infos</a></li>
+          <li><span class="sep"></span></li>
+          <li><a href="/static/cousinade.xlsx" class="nav-link {{ 'active' if current.startswith('/about') else '' }}">fichier devis</a></li>
+          <!-- <li><span class="sep"></span></li>
+          <li><a href="/help" class="nav-link {{ 'active' if current.startswith('/help') else '' }}">Aide</a></li> -->
+        </ul>
+      </div>
+      {% endif %}
+
+      <!-- Bloc droit : actions -->
+      <div class="hidden md:flex items-center gap-3">
+        {% if user %}
+          <span class="text-sm text-gray-600">Bonjour, {{ user.first_name }}</span>
+          <a href="/logout" class="btn btn-outline">Se déconnecter</a>
+        {% endif %}
+      </div>
+
+      <!-- Bouton mobile -->
+      <button class="md:hidden p-2" onclick="document.getElementById('mnav').classList.toggle('hidden')" aria-label="Menu">
+        ☰
+      </button>
+    </div>
+  </div>
+
+  <!-- Menu mobile -->
+  <div id="mnav" class="md:hidden hidden border-t border-gray-200">
+    <div class="px-4 py-2 flex flex-col text-sm">
+      <a href="/" class="m-link">Annuaire</a>
+      <a href="/edit" class="m-link">Mes infos</a>
+      <a href="/rsvp" class="m-link">Cousinade 2026</a>
+      <a href="/help" class="m-link">Aide</a>
+
+      <div class="border-t border-gray-200 mt-2 pt-2">
+        {% if user %}
+          <a href="/logout" class="m-link">Se déconnecter</a>
+        {% else %}
+          <a href="/login" class="m-link">Se connecter</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Styles (compatibles CDN Tailwind, pas de @apply) -->
+<style>
+  .nav-link{
+    display:inline-block;padding:.375rem .5rem;border-radius:.375rem;
+    color:#374151;text-decoration:none
+  }
+  .nav-link:hover{background:#f3f4f6}
+  .nav-link.active{color:#1d4ed8;background:#eff6ff;font-weight:600}
+  .sep{display:inline-block;width:1px;height:20px;background:#e5e7eb;margin:0 .5rem}
+  .btn{padding:.375rem .75rem;border-radius:.5rem;font-size:.875rem;text-decoration:none}
+  .btn-primary{background:#2563eb;color:#fff}
+  .btn-primary:hover{background:#1d4ed8}
+  .btn-outline{border:1px solid #e5e7eb;color:#374151;background:#fff}
+  .btn-outline:hover{background:#f9fafb}
+  .m-link{padding:.5rem 0;border-bottom:1px solid #f3f4f6;text-decoration:none;color:#374151}
+  .m-link:hover{background:#f9fafb}
+</style>
+
+    
+
+
+    <main class="container mx-auto flex-1 p-6">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="bg-gray-200 text-center text-sm p-4">
+      Cousinade – mai 2026
+    </footer>
+  </body>
+</html>

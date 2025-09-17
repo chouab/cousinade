@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}Édition du foyer{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Mettre à jour mes infos</h1>
+
+<form id="familyForm" method="post" action="/edit/save" class="space-y-6">
+  <!-- requis par ton endpoint -->
+  <input type="hidden" name="token" value="{{ token }}">
+  <input type="hidden" name="owner_id" value="{{ owner.id }}">
+  <!-- NOUVEAU : le JSON complet de la famille -->
+  <input type="hidden" name="family_json" id="family_json">
+
+  <!-- OWNER -->
+  <section class="bg-white p-4 rounded-xl shadow">
+    <h2 class="text-xl font-bold mb-3">Moi</h2>
+    <div class="grid md:grid-cols-2 gap-3" data-role="owner" data-id="{{ owner.id }}">
+      <div class="form-row">
+        <label >Prénom :</label>
+        <input data-field="first_name" value="{{ owner.first_name }}">
+      </div>
+      <div class="form-row">
+        <label>Nom</label>
+        <input data-field="last_name" value="{{ owner.last_name }}">
+      </div>
+      <div class="form-row">
+        <label>Date de naissance</label>
+        <input type="date" data-field="birth_date" value="{{ owner.birth_date or '' }}">
+      </div>
+      <div class="form-row">
+        <label>Email</label>
+        <input type="email" data-field="email" value="{{ owner.email or '' }}">
+      </div>
+      <div class="form-row">
+        <label>Téléphone</label>
+        <input data-field="phone" value="{{ owner.phone or '' }}">
+      </div>
+    </div>
+  </section>
+
+  <!-- PARTENAIRES -->
+
+  <section class="bg-white p-4 rounded-xl shadow" style="{{ partners or 'display:none' }}" >
+    <h2 class="text-xl font-bold mb-3">Conjoint</h2>
+    <div id="partnersContainer" class="grid md:grid-cols-2 gap-3">
+      {% for p in partners %}
+      <div class="border rounded-xl p-3 relative" data-role="partner" data-id="{{ p.id }}">
+        <!-- <button type="button" class="absolute top-2 right-2 text-gray-500" onclick="removeCard(this)" title="Supprimer">✕</button> -->
+        <div class="grid gap-2">
+          <div class="form-row">
+            <label>Prénom</label>
+            <input data-field="first_name" value="{{ p.first_name }}">
+          </div>
+          <div class="form-row">
+            <label>Nom</label>
+            <input data-field="last_name" value="{{ p.last_name }}">
+          </div>
+          <div class="form-row">
+            <label>Date de naissance</label>
+            <input type="date" data-field="birth_date" value="{{ p.birth_date or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Email</label>
+            <input type="email" data-field="email" value="{{ p.email or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Téléphone</label>
+            <input data-field="phone" value="{{ p.phone or '' }}">
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ENFANTS -->
+  <section class="bg-white p-4 rounded-xl shadow">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-xl font-bold">Enfant(s)</h2>
+      <!-- <button type="button" class="bg-blue-600 text-white text-sm px-3 py-1 rounded" onclick="addChild()">+ Ajouter un enfant</button> -->
+    </div>
+    <div id="childrenContainer" class="grid md:grid-cols-2 gap-4">
+      {% for c in children %}
+      <div class="border rounded-xl p-3 relative" data-role="child" data-id="{{ c.id }}">
+        <!-- <button type="button" class="absolute top-2 right-2 text-gray-500" onclick="removeCard(this)" title="Supprimer">✕</button> -->
+        <div class="grid gap-2">
+          <div class="form-row">
+            <label>Prénom</label>
+            <input data-field="first_name" value="{{ c.first_name }}">
+          </div>
+          <div class="form-row">
+            <label>Nom</label>
+            <input data-field="last_name" value="{{ c.last_name }}">
+          </div>
+          <div class="form-row">
+            <label>Date de naissance</label>
+            <input type="date" data-field="birth_date" value="{{ c.birth_date or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Email</label>
+            <input type="email" data-field="email" value="{{ c.email or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Téléphone</label>
+            <input data-field="phone" value="{{ c.phone or '' }}">
+          </div>
+          <!-- <div>
+            <label>Deuxième parent (optionnel)</label>
+            <select data-field="second_parent_partner_id">
+              <option value="">—</option>
+              {% for p in partners %}
+                <option value="{{ p.id }}">{{ p.first_name }} {{ p.last_name }}</option>
+              {% endfor %}
+            </select>
+          </div> -->
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="flex gap-3">
+    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700">
+      💾 Enregistrer tout le foyer
+    </button>
+    <a href="/" class="px-6 py-2 rounded border">Annuler</a>
+  </div>
+</form>
+
+<script>
+  // Helpers ID temporaires pour nouveaux membres
+  let tmpId = -1;
+  function newTmpId() { return tmpId--; }
+
+  function removeCard(btn) {
+    const card = btn.closest('[data-role]');
+    card.parentNode.removeChild(card);
+  }
+
+  function inputBlock(fields, role, id=null) {
+    const rid = id ?? newTmpId();
+    const statusSelect = role === 'partner'
+      ? `<div>
+           <label>Statut du couple</label>
+           <select data-field="couple_status">
+             <option value="current" selected>En couple</option>
+             <option value="separated">Séparé</option>
+             <option value="widowed">Veuf/Veuve</option>
+           </select>
+         </div>` : '';
+    const extraChild = role === 'child'
+      ? `<div>
+           <label>Deuxième parent (optionnel)</label>
+           <select data-field="second_parent_partner_id" data-partners-select="1">
+             <option value="">—</option>
+           </select>
+         </div>` : '';
+    return `
+    <div class="border rounded-xl p-3 relative" data-role="${role}" data-id="${rid}">
+      <button type="button" class="absolute top-2 right-2 text-gray-500" onclick="removeCard(this)" title="Supprimer">✕</button>
+      <div class="grid gap-2">
+        <div><label>Prénom</label>
+          <input data-field="first_name" value="${fields.first_name||''}">
+        </div>
+        <div><label>Nom</label>
+          <input data-field="last_name" value="${fields.last_name||''}">
+        </div>
+        <div><label>Date de naissance</label>
+          <input type="date" data-field="birth_date" value="${fields.birth_date||''}">
+        </div>
+        <div><label>Email</label>
+          <input type="email" data-field="email" value="${fields.email||''}">
+        </div>
+        <div><label>Téléphone</label>
+          <input data-field="phone" value="${fields.phone||''}">
+        </div>
+        ${statusSelect}
+        ${extraChild}
+      </div>
+    </div>`;
+  }
+
+  function addPartner() {
+    const el = document.getElementById('partnersContainer');
+    el.insertAdjacentHTML('beforeend', inputBlock({}, 'partner'));
+    refreshPartnerSelects();
+  }
+
+  function addChild() {
+    const el = document.getElementById('childrenContainer');
+    el.insertAdjacentHTML('beforeend', inputBlock({}, 'child'));
+    refreshPartnerSelects();
+  }
+
+  function refreshPartnerSelects() {
+    // Maj des listes déroulantes "Deuxième parent" avec les partenaires existants
+    const partners = Array.from(document.querySelectorAll('#partnersContainer [data-role="partner"]'));
+    const opts = partners.map(p => {
+      const id = p.getAttribute('data-id');
+      const fn = p.querySelector('[data-field="first_name"]').value || 'Conjoint';
+      const ln = p.querySelector('[data-field="last_name"]').value || '';
+      return `<option value="${id}">${fn} ${ln}</option>`;
+    }).join('');
+    document.querySelectorAll('[data-partners-select="1"]').forEach(sel => {
+      const current = sel.value;
+      sel.innerHTML = `<option value="">—</option>${opts}`;
+      if (current) sel.value = current;
+    });
+  }
+
+  // Prépare le JSON complet avant soumission
+  document.getElementById('familyForm').addEventListener('submit', function (e) {
+    const ownerBlock = document.querySelector('[data-role="owner"]');
+    const owner = collectBlock(ownerBlock, 'owner');
+
+    const partners = Array.from(document.querySelectorAll('#partnersContainer [data-role="partner"]'))
+      .map(el => collectBlock(el, 'partner'));
+
+    const children = Array.from(document.querySelectorAll('#childrenContainer [data-role="child"]'))
+      .map(el => {
+        const o = collectBlock(el, 'child');
+        const secondParent = el.querySelector('[data-field="second_parent_partner_id"]');
+        o.second_parent_partner_id = (secondParent && secondParent.value) ? parseInt(secondParent.value, 10) : null;
+        return o;
+      });
+
+    // liens : couples (owner <-> chaque partner) + parent_child (owner -> child) + éventuellement second parent
+    const couples = partners.map(p => ({
+      a_id: owner.id, b_id: p.id, status: p.couple_status || 'current'
+    }));
+
+    const parent_child = [];
+    children.forEach(c => {
+      parent_child.push({ parent_id: owner.id, child_id: c.id });
+      if (c.second_parent_partner_id) {
+        parent_child.push({ parent_id: c.second_parent_partner_id, child_id: c.id });
+      }
+    });
+
+    const payload = { owner, partners, children, couples, parent_child };
+    document.getElementById('family_json').value = JSON.stringify(payload);
+    // pas de preventDefault: on laisse soumettre normalement
+  });
+
+  function collectBlock(root, role) {
+    const o = { role, id: parseInt(root.getAttribute('data-id'), 10) };
+    root.querySelectorAll('[data-field]').forEach(inp => {
+      const k = inp.getAttribute('data-field');
+      o[k] = (inp.type === 'date' || inp.type === 'email') ? inp.value || null : (inp.value || '').trim() || null;
+    });
+    // couple_status seulement pour partner
+    if (role === 'partner') {
+      o.couple_status = root.querySelector('[data-field="couple_status"]')?.value || 'current';
+    }
+    return o;
+  }
+
+  // Initial refresh for selects
+  refreshPartnerSelects();
+
+</script>
+{% endblock %}

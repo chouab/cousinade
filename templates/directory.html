@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Annuaire{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Annuaire</h1>
+
+<form method="get" class="mb-6">
+  <input type="text" name="q" value="{{ q }}" 
+    class="border rounded-l px-3 py-2 w-64" 
+    placeholder="Recherche (nom, branche)">
+  <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-r">🔍</button>
+</form>
+
+<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+  {% for m in members %}
+    <a href="/member/{{ m.id }}" 
+       class="block bg-white rounded-xl shadow p-4 hover:shadow-lg transition">
+      <h2 class="font-bold text-lg">{{ m.last_name|upper }} {{ m.first_name }}</h2>
+      {% if m.family_branch %}
+        <p class="text-sm text-gray-600">{{ m.family_branch }}</p>
+      {% endif %}
+      {% if m.phone %}
+        <p class="text-sm">📱 {{ m.phone }}</p>
+      {% endif %}
+     
+      {% if m.birth_date %}
+        <p class="text-sm">🎂 {{ m.birth_date.strftime('%d/%m/%Y') }}</p>
+      {% endif %}
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

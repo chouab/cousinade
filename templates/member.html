@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ m.first_name }} {{ m.last_name }}{% endblock %}
+{% block content %}
+<div class="bg-white shadow rounded-xl p-6">
+  <h1 class="text-2xl font-bold mb-2">{{ m.first_name }} {{ m.last_name }}</h1>
+  <ul class="space-y-1 text-gray-700">
+    {% if m.birth_date %}
+      <li>🎂 <strong>Date de naissance :</strong> {{ m.birth_date.strftime('%d/%m/%Y') }}</li>
+    {% endif %}
+    {% if m.email %}
+      <li>📧 <strong>Email :</strong> <a href="mailto:{{ m.email }}" class="text-blue-600 underline">{{ m.email }}</a></li>
+    {% endif %}
+    {% if m.phone %}
+      <li>📱 <strong>Téléphone :</strong> {{ m.phone }}</li>
+    {% endif %}
+  </ul>
+
+  {% if partners %}
+  <div class="mt-6">
+    <h2 class="text-xl font-semibold mb-2">Conjoint</h2>
+    <ul class="list-disc list-inside">
+      {% for p in partners %}
+        <li><a href="/member/{{p.id}}">{{ p.first_name }} {{ p.last_name }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+ {% endif %}
+
+  {% if children %}
+  <div class="mt-6">
+    <h2 class="text-xl font-semibold mb-2">Enfant(s)</h2>
+    <ul class="list-disc list-inside">
+      {% for c in children %}
+        <li><a href="/member/{{c.id}}">{{ c.first_name }} {{ c.last_name }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+ {% endif %}
+
+</div>
+
+<p class="mt-6">
+  <a href="/" class="text-blue-600 underline">↩ Retour à l’annuaire</a>
+</p>
+{% endblock %}
