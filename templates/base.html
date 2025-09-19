@@ -28,6 +28,8 @@
         <ul class="hidden md:flex items-center text-sm text-gray-700">
           <li><a href="/" class="nav-link {{ 'active' if current == '/'  or current.startswith('/member/') else '' }}">Annuaire</a></li>
           <li><span class="sep"></span></li>
+          <li><a href="/photos" class="nav-link {{ 'active' if current == '/photos' else '' }}">Vieux dossiers</a></li>
+          <li><span class="sep"></span></li>
           <li><a href="/rsvp" class="nav-link {{ 'active' if current.startswith('/rsvp') else '' }}">Organisation 2026</a></li>
           <li><span class="sep"></span></li>
           <li><a href="/edit" class="nav-link {{ 'active' if current.startswith('/edit' ~ user.id) else '' }}">Mes infos</a></li>

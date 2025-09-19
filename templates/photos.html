@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Photothèque{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl font-semibold mb-4">Photothèque</h1>
+
+<form method="post" action="/photos/upload" enctype="multipart/form-data" class="bg-white rounded-xl shadow border p-4 mb-6">
+  <div class="form-row">
+    <label>Ajouter des photos</label>
+    <input type="file" name="files" accept="image/*" multiple>
+  </div>
+  <button class="btn btn-primary">📤 Envoyer</button>
+</form>
+
+{% if photos|length == 0 %}
+  <p class="text-gray-600">Aucune photo pour le moment.</p>
+{% else %}
+  <div id="gallery" class="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+    {% for p in photos %}
+      <a href="/media/photos/full/{{ p.stored_name }}"
+         class="block bg-white rounded-xl shadow overflow-hidden js-photo-item"
+         data-index="{{ loop.index0 }}"
+         data-full="/media/photos/full/{{ p.stored_name }}"
+         data-thumb="/media/photos/thumb/{{ p.stored_name }}"
+         data-caption="{{ p.member.first_name }} — {{ p.created_at.strftime('%d/%m/%Y') }}">
+        <img src="/media/photos/thumb/{{ p.stored_name }}" alt="{{ p.orig_name }}" class="w-full h-auto">
+        <div class="px-3 py-2 text-xs text-gray-600 flex justify-between">
+          <span>{{ p.member.first_name }}</span>
+          <span>{{ p.created_at.strftime('%d/%m/%Y') }}</span>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<!-- LIGHTBOX -->
+<div id="lb" class="lb-overlay lb-hidden" aria-hidden="true">
+  <button class="lb-close" aria-label="Fermer">×</button>
+  <button class="lb-nav lb-prev" aria-label="Précédent">‹</button>
+  <figure class="lb-figure">
+    <img id="lb-img" alt="">
+    <figcaption id="lb-cap"></figcaption>
+    <div class="lb-actions">
+      <a id="lb-open" href="#" target="_blank" rel="noopener">Ouvrir l’original</a>
+    </div>
+  </figure>
+  <button class="lb-nav lb-next" aria-label="Suivant">›</button>
+</div>
+
+<!-- Styles lightbox (compatibles CDN) -->
+<style>
+  .lb-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.92);
+    display:flex; align-items:center; justify-content:center; z-index:60;
+    padding:2rem;
+  }
+  .lb-hidden{ display:none; }
+  .lb-figure{ max-width:92vw; max-height:86vh; color:#e5e7eb; text-align:center; }
+  #lb-img{ max-width:92vw; max-height:76vh; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  #lb-cap{ margin-top:.5rem; font-size:.9rem; opacity:.9; }
+  .lb-actions{ margin-top:.25rem; }
+  .lb-actions a{ color:#93c5fd; text-decoration:underline; }
+  .lb-close{
+    position:absolute; top:10px; right:14px; font-size:2rem; line-height:1;
+    color:#e5e7eb; background:transparent; border:none; cursor:pointer; padding:.25rem .5rem;
+  }
+  .lb-nav{
+    position:absolute; top:50%; transform:translateY(-50%);
+    font-size:2.25rem; color:#e5e7eb; background:rgba(0,0,0,.25);
+    border:none; width:44px; height:44px; border-radius:9999px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .lb-prev{ left:16px; }
+  .lb-next{ right:16px; }
+  .lb-nav:hover, .lb-close:hover{ background:rgba(255,255,255,.12); }
+</style>
+
+<!-- JS lightbox -->
+<script>
+(function(){
+  const items = Array.from(document.querySelectorAll('.js-photo-item'));
+  if (!items.length) return;
+
+  const overlay = document.getElementById('lb');
+  const img = document.getElementById('lb-img');
+  const cap = document.getElementById('lb-cap');
+  const link = document.getElementById('lb-open');
+  const btnPrev = overlay.querySelector('.lb-prev');
+  const btnNext = overlay.querySelector('.lb-next');
+  const btnClose = overlay.querySelector('.lb-close');
+
+  let index = 0, touchStartX = 0, touchEndX = 0;
+
+  function openAt(i){
+    index = (i + items.length) % items.length;
+    const it = items[index];
+    img.src = it.dataset.full;
+    img.alt = it.getAttribute('aria-label') || it.dataset.caption || '';
+    cap.textContent = it.dataset.caption || '';
+    link.href = it.dataset.full;
+    overlay.classList.remove('lb-hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLB(){
+    overlay.classList.add('lb-hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+  function prev(){ openAt(index - 1); }
+  function next(){ openAt(index + 1); }
+
+  // Bind sur les vignettes
+  items.forEach((a, i)=>{
+    a.addEventListener('click', (e)=>{
+      e.preventDefault();
+      openAt(i);
+    });
+  });
+
+  // Contrôles
+  btnClose.addEventListener('click', closeLB);
+  btnPrev.addEventListener('click', prev);
+  btnNext.addEventListener('click', next);
+
+  // Fermer si clic en dehors de l'image
+  overlay.addEventListener('click', (e)=>{
+    const withinFigure = e.target.closest('.lb-figure');
+    const isNav = e.target.closest('.lb-nav') || e.target.closest('.lb-close');
+    if (!withinFigure && !isNav) closeLB();
+  });
+
+  // Clavier
+  window.addEventListener('keydown', (e)=>{
+    if (overlay.classList.contains('lb-hidden')) return;
+    if (e.key === 'Escape') closeLB();
+    else if (e.key === 'ArrowLeft') prev();
+    else if (e.key === 'ArrowRight') next();
+  });
+
+  // Swipe mobile
+  overlay.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].clientX; }, {passive:true});
+  overlay.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].clientX;
+    const dx = touchEndX - touchStartX;
+    if (Math.abs(dx) > 40) { dx > 0 ? prev() : next(); }
+  }, {passive:true});
+})();
+</script>
+
+{% endblock %}

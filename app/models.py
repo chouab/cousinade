@@ -84,3 +84,16 @@ class PersonAttendance(Base):
 
     person = relationship("Member")
     slot = relationship("EventSlot")
+
+class Photo(Base):
+    __tablename__ = "photos"
+    id = Column(Integer, primary_key=True)
+    member_id = Column(Integer, ForeignKey("members.id"), nullable=False)
+    orig_name = Column(String(255), nullable=True)   # nom d'origine
+    stored_name = Column(String(255), nullable=False) # ex: 2025/09/abc123.jpg
+    mime = Column(String(50), nullable=True)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    member = relationship("Member")

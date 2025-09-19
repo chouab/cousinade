@@ -1,14 +1,22 @@
 # app/main.py
 
-import secrets, datetime, json, os
+import secrets, datetime, json, os, io
 from datetime import date
 
-from sqlalchemy import create_engine, select, func, text, inspect
+from PIL import Image, ImageOps
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except Exception:
+    pass
+from typing import List
+
+from sqlalchemy import create_engine, select, func, text, inspect, desc
 from sqlalchemy.orm import sessionmaker, Session
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from .models import Base, Member, ParentChild, Couple, EventWeekend, EventSlot, PersonAttendance
+from .models import Base, Member, ParentChild, Couple, EventWeekend, EventSlot, PersonAttendance, Photo
 
-from fastapi import FastAPI, Request, Depends, Form, HTTPException, status
+from fastapi import FastAPI, Request, Depends, Form,  UploadFile, File, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -27,11 +35,40 @@ def create_app() -> FastAPI:
         session_cookie="cousinade_session",
     )
 
-    # 2) Static (même app)
-    app.mount("/static", StaticFiles(directory="static"), name="static")
     return app
 
 app = create_app()
+
+MEDIA_ROOT = "media"
+PHOTOS_FULL = os.path.join(MEDIA_ROOT, "photos/full")
+PHOTOS_THUMB = os.path.join(MEDIA_ROOT, "photos/thumb")
+
+os.makedirs(PHOTOS_FULL, exist_ok=True)
+os.makedirs(PHOTOS_THUMB, exist_ok=True)
+
+app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+MAX_FULL = 2048   # côté max pour la version "full"
+MAX_THUMB = 400   # côté max pour la vignette
+
+def _safe_ext(mime: str, fallback=".jpg"):
+    return {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/heic": ".jpg", "image/heif": ".jpg"  # converties via pillow-heif si dispo
+    }.get(mime.lower(), fallback)
+
+def _save_resized(img: Image.Image, dest: str, max_side: int):
+    im = ImageOps.exif_transpose(img)  # respecte l’orientation EXIF
+    im.thumbnail((max_side, max_side)) # conserve le ratio
+    fmt = "JPEG" if dest.lower().endswith(".jpg") else "PNG" if dest.lower().endswith(".png") else "WEBP"
+    save_kwargs = {"optimize": True, "quality": 88} if fmt in ("JPEG","WEBP") else {}
+    im.save(dest, fmt, **save_kwargs)
+    return im.size  # (w, h)
+
+
 
 def update_bdd(engine):
     insp = inspect(engine)
@@ -223,18 +260,64 @@ def logout(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 
-# ---- Admin : créer un token d’édition
-@app.post("/admin/new-token")
-def new_token(member_id: int, hours_valid: int = 72, db: Session = Depends(get_db)):
-    token = secrets.token_urlsafe(32)
-    t = EditToken(
-        token=token,
-        owner_member_id=member_id,
-        expires_at=datetime.datetime.utcnow() + datetime.timedelta(hours=hours_valid)
-    )
-    db.add(t); db.commit()
-    return {"edit_link": f"/edit?token={token}"}
+# ---- Afficher la galerie
+@app.get("/photos", response_class=HTMLResponse)
+def photos_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)  # via ton cookie
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
+    photos = db.scalars(
+        select(Photo).order_by(desc(Photo.created_at)).limit(300)  # paginate si besoin
+    ).all()
+    tpl = templates.get_template("photos.html")
+    return tpl.render(request=request, user=user, photos=photos)
+
+# ---- Upload (multiple)
+@app.post("/photos/upload")
+async def photos_upload(request: Request, files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    import uuid, datetime as dt
+    today = dt.date.today()
+    subdir = f"{today.year}/{today.month:02d}"
+    full_dir = os.path.join(PHOTOS_FULL, subdir)
+    th_dir = os.path.join(PHOTOS_THUMB, subdir)
+    os.makedirs(full_dir, exist_ok=True)
+    os.makedirs(th_dir, exist_ok=True)
+
+    for uf in files:
+        mime = uf.content_type or ""
+        ext = _safe_ext(mime)
+        uid = uuid.uuid4().hex
+        stored_rel = f"{subdir}/{uid}{ext}"
+        full_path = os.path.join(full_dir, f"{uid}{ext}")
+        th_path = os.path.join(th_dir, f"{uid}{ext}")
+
+        # Charge dans Pillow puis enregistre les 2 tailles
+        content = await uf.read()
+        try:
+            with Image.open(io.BytesIO(content)) as img:
+                w_full, h_full = _save_resized(img, full_path, MAX_FULL)
+                with Image.open(full_path) as im2:
+                    w_th, h_th = _save_resized(im2, th_path, MAX_THUMB)
+        except Exception:
+            # Si Pillow ne sait pas lire, ignore ce fichier
+            continue
+
+        p = Photo(
+            member_id=user.id,
+            orig_name=uf.filename,
+            stored_name=stored_rel,
+            mime=mime,
+            width=w_full, height=h_full
+        )
+        db.add(p)
+
+    db.commit()
+    return RedirectResponse(url="/photos", status_code=status.HTTP_303_SEE_OTHER)
 
 
 def get_household(user: Member) -> list[Member]:
@@ -355,8 +438,6 @@ def rsvp_page(request: Request, db: Session = Depends(get_db)):
                       others_by_weekend=others_by_weekend)
 
 
-
-
 @app.post("/rsvp/save")
 async def rsvp_save(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
@@ -391,22 +472,3 @@ async def rsvp_save(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url="/rsvp", status_code=status.HTTP_303_SEE_OTHER)
 
 
-
-"""
-
-# Petit helper pour lire vite les champs POST sans dépendance spécifique
-from fastapi import Body
-from starlette.datastructures import FormData
-
-async def _read_form(request: Request) -> FormData:
-    # FastAPI parse automatiquement si on l'appelle une fois
-    return await request.form()
-
-_form_cache_key = "_cached_form_"
-
-async def await_request_form_value(request: Request, key: str):
-    # mise en cache du parse
-    if not hasattr(request.state, _form_cache_key):
-        setattr(request.state, _form_cache_key, await _read_form(request))
-    form = getattr(request.state, _form_cache_key)
-    return form.get(key, None)"""
