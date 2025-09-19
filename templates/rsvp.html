@@ -35,7 +35,7 @@
               <tr class="text-left text-gray-600">
                 <th class="py-2 pr-2"></th>
                 {% for s in w.slots %}
-                  <th class="py-2 px-2">
+                  <th class="py-2 px-2 text-center">
                     {{ s.label }}<br>
                     <span class="text-xs text-gray-500">
                       {{ s.date.strftime('%a %d/%m').replace('Mon','Lun').replace('Tue','Mar').replace('Wed','Mer').replace('Thu','Jeu').replace('Fri','Ven').replace('Sat','Sam').replace('Sun','Dim') }}
@@ -79,7 +79,7 @@
               <tr class="text-left text-gray-600">
                 <th class="py-2 pr-2"></th>
                 {% for s in w.slots %}
-                  <th class="py-2 px-2">
+                  <th class="py-2 px-2 text-center">
                     {{ s.label }}<br>
                     <span class="text-xs text-gray-500">
                       {{ s.date.strftime('%a %d/%m').replace('Mon','Lun').replace('Tue','Mar').replace('Wed','Mer').replace('Thu','Jeu').replace('Fri','Ven').replace('Sat','Sam').replace('Sun','Dim') }}

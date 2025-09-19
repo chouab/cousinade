@@ -11,7 +11,7 @@ except Exception:
     pass
 from typing import List
 
-from sqlalchemy import create_engine, select, func, text, inspect, desc
+from sqlalchemy import create_engine, select, func, text, inspect, desc, case
 from sqlalchemy.orm import sessionmaker, Session
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from .models import Base, Member, ParentChild, Couple, EventWeekend, EventSlot, PersonAttendance, Photo
@@ -34,7 +34,6 @@ def create_app() -> FastAPI:
         same_site="lax",
         session_cookie="cousinade_session",
     )
-
     return app
 
 app = create_app()
@@ -396,11 +395,7 @@ def rsvp_page(request: Request, db: Session = Depends(get_db)):
 
     # Totaux globaux par slot (tous foyers confondus)
     totals = dict(db.execute(
-        select(PersonAttendance.slot_id, func.sum(func.cast(PersonAttendance.present, Integer)))
-        .group_by(PersonAttendance.slot_id)
-    ).all()) if db.bind.dialect.name != "sqlite" else dict(db.execute(
-        select(PersonAttendance.slot_id, func.sum(PersonAttendance.present*1)).group_by(PersonAttendance.slot_id)
-    ).all())
+        select(PersonAttendance.slot_id, func.sum(case((PersonAttendance.present == True, 1), else_=0))).group_by(PersonAttendance.slot_id)).all())
 
     household_ids = [m.id for m in household]
 
