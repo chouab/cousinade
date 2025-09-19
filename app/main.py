@@ -3,7 +3,7 @@
 import secrets, datetime, json, os
 from datetime import date
 
-from sqlalchemy import create_engine, select, func
+from sqlalchemy import create_engine, select, func, text, inspect
 from sqlalchemy.orm import sessionmaker, Session
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from .models import Base, Member, ParentChild, Couple, EventWeekend, EventSlot, PersonAttendance
@@ -33,10 +33,23 @@ def create_app() -> FastAPI:
 
 app = create_app()
 
+def update_bdd(engine):
+    insp = inspect(engine)
+    cols = {c['name'] for c in insp.get_columns('members')}
+    if 'address' not in cols:
+        with engine.begin() as conn: conn.execute(text("ALTER TABLE members ADD COLUMN address VARCHAR(255);"))
+    if 'postal_code' not in cols: 
+        with engine.begin() as conn: conn.execute(text("ALTER TABLE members ADD COLUMN postal_code VARCHAR(20);"))
+    if 'city' not in cols:
+        with engine.begin() as conn: conn.execute(text("ALTER TABLE members ADD COLUMN city VARCHAR(80);"))
+
+
 DATABASE_URL = "sqlite:///./cousinade.db"  # passe à Postgres si besoin
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+update_bdd(engine)
 Base.metadata.create_all(bind=engine)
+
 templates = Environment(loader=FileSystemLoader("templates"), autoescape=select_autoescape(['html', 'xml']))
 
 def get_db():

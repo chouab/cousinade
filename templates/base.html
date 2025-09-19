@@ -26,11 +26,11 @@
         <!-- Liens desktop -->
         {% set current = request.url.path %}
         <ul class="hidden md:flex items-center text-sm text-gray-700">
-          <li><a href="/" class="nav-link {{ 'active' if current == '/' else '' }}">Annuaire</a></li>
+          <li><a href="/" class="nav-link {{ 'active' if current == '/'  or current.startswith('/member/') else '' }}">Annuaire</a></li>
           <li><span class="sep"></span></li>
           <li><a href="/rsvp" class="nav-link {{ 'active' if current.startswith('/rsvp') else '' }}">Organisation 2026</a></li>
           <li><span class="sep"></span></li>
-          <li><a href="/edit" class="nav-link {{ 'active' if current.startswith('/member/' ~ user.id) else '' }}">Mes infos</a></li>
+          <li><a href="/edit" class="nav-link {{ 'active' if current.startswith('/edit' ~ user.id) else '' }}">Mes infos</a></li>
           <li><span class="sep"></span></li>
           <li><a href="/static/cousinade.xlsx" class="nav-link {{ 'active' if current.startswith('/about') else '' }}">fichier devis</a></li>
           <!-- <li><span class="sep"></span></li>
