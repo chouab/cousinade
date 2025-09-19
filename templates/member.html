@@ -13,6 +13,15 @@
     {% if m.phone %}
       <li>📱 <strong>Téléphone :</strong> {{ m.phone }}</li>
     {% endif %}
+    {% if m.address or m.postal_code or m.city %}
+      <li>🏠 <strong>Adresse :</strong>
+        {% if m.address %} {{ m.address }}{% endif %}
+        {% if m.address and (m.postal_code or m.city) %}<br>{% endif %}
+        {% if m.postal_code or m.city %}
+          {{ m.postal_code or '' }}{% if m.postal_code and m.city %} {% endif %}{{ m.city or '' }}
+        {% endif %}
+      </li>
+    {% endif %}
   </ul>
 
   {% if partners %}

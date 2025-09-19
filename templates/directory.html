@@ -21,7 +21,10 @@
       {% if m.phone %}
         <p class="text-sm">📱 {{ m.phone }}</p>
       {% endif %}
-     
+      {% if m.postal_code or m.city %}
+        <p class="text-sm">📍 {{ m.postal_code or '' }}{% if m.postal_code and m.city %} {% endif %}{{ m.city or '' }}</p>
+      {% endif %}
+
       {% if m.birth_date %}
         <p class="text-sm">🎂 {{ m.birth_date.strftime('%d/%m/%Y') }}</p>
       {% endif %}

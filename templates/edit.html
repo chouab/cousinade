@@ -34,6 +34,18 @@
         <label>Téléphone</label>
         <input data-field="phone" value="{{ owner.phone or '' }}">
       </div>
+      <div class="form-row">
+        <label>Adresse</label>
+        <input data-field="address" value="{{ owner.address or '' }}">
+      </div>
+      <div class="form-row">
+        <label>Code postal</label>
+        <input data-field="postal_code" value="{{ owner.postal_code or '' }}">
+      </div>
+      <div class="form-row">
+        <label>Ville</label>
+        <input data-field="city" value="{{ owner.city or '' }}">
+      </div>
     </div>
   </section>
 
@@ -65,6 +77,18 @@
           <div class="form-row">
             <label>Téléphone</label>
             <input data-field="phone" value="{{ p.phone or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Adresse</label>
+            <input data-field="address" value="{{ p.address or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Code postal</label>
+            <input data-field="postal_code" value="{{ p.postal_code or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Ville</label>
+            <input data-field="city" value="{{ p.city or '' }}">
           </div>
         </div>
       </div>
@@ -102,6 +126,18 @@
           <div class="form-row">
             <label>Téléphone</label>
             <input data-field="phone" value="{{ c.phone or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Adresse</label>
+            <input data-field="address" value="{{ c.address or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Code postal</label>
+            <input data-field="postal_code" value="{{ c.postal_code or '' }}">
+          </div>
+          <div class="form-row">
+            <label>Ville</label>
+            <input data-field="city" value="{{ c.city or '' }}">
           </div>
           <!-- <div>
             <label>Deuxième parent (optionnel)</label>
@@ -172,6 +208,15 @@
         </div>
         <div><label>Téléphone</label>
           <input data-field="phone" value="${fields.phone||''}">
+        </div>
+        <div><label>Adresse</label>
+          <input data-field="address" value="${fields.address||''}">
+        </div>
+        <div><label>Code postal</label>
+          <input data-field="postal_code" value="${fields.postal_code||''}">
+        </div>
+        <div><label>Ville</label>
+          <input data-field="city" value="${fields.city||''}">
         </div>
         ${statusSelect}
         ${extraChild}

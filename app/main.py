@@ -128,6 +128,9 @@ def save_form(request: Request, owner_id: int = Form(...), family_json: str = Fo
             m.last_name  = (mobj.get("last_name")  or m.last_name).strip()
             m.email      = mobj.get("email")
             m.phone      = mobj.get("phone")
+            m.address    = mobj.get("address")
+            m.postal_code = mobj.get("postal_code")
+            m.city       = mobj.get("city")
             bd = mobj.get("birth_date")
             if bd:
                 try: m.birth_date = datetime.date.fromisoformat(bd)

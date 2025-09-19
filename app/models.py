@@ -14,6 +14,9 @@ class Member(Base):
     birth_date = Column(Date, nullable=True)
     email = Column(String(255), nullable=True, unique=False)
     phone = Column(String(50), nullable=True)
+    address = Column(String(255), nullable=True)
+    postal_code = Column(String(20), nullable=True)
+    city = Column(String(80), nullable=True)
     notes = Column(Text, nullable=True)
     # Métadonnées
     created_at = Column(DateTime, default=datetime.utcnow)
