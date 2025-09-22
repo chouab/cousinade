@@ -2,7 +2,15 @@
 {% block title %}{{ m.first_name }} {{ m.last_name }}{% endblock %}
 {% block content %}
 <div class="bg-white shadow rounded-xl p-6">
-  <h1 class="text-2xl font-bold mb-2">{{ m.first_name }} {{ m.last_name }}</h1>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+    <h1 class="text-2xl font-bold">{{ m.first_name }} {{ m.last_name }}</h1>
+    {% if False and m.phone %}  
+    <a href="/member/{{ m.id }}/vcard" class="inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+      📇 Ajouter aux contacts
+    </a>
+    {% endif %}
+  </div>
+  
   <ul class="space-y-1 text-gray-700">
     {% if m.birth_date %}
       <li>🎂 <strong>Date de naissance :</strong> {{ m.birth_date.strftime('%d/%m/%Y') }}</li>

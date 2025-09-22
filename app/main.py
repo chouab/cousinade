@@ -1,6 +1,6 @@
 # app/main.py
 
-import secrets, datetime, json, os, io
+import secrets, datetime, json, os, io, re, unicodedata
 from datetime import date
 
 from PIL import Image, ImageOps
@@ -17,20 +17,39 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from .models import Base, Member, ParentChild, Couple, EventWeekend, EventSlot, PersonAttendance, Photo
 
 from fastapi import FastAPI, Request, Depends, Form,  UploadFile, File, HTTPException, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+
+
+def _load_or_create_secret(path: str) -> str:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            secret = fh.read().strip()
+            if secret:
+                return secret
+    except FileNotFoundError:
+        pass
+
+    secret = secrets.token_hex(32)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(secret)
+    return secret
 
 
 def create_app() -> FastAPI:
     app = FastAPI()
 
     # 1) Session d'abord
-    SECRET_KEY = os.getenv("SESSION_SECRET", secrets.token_hex(32))
+    secret_key = os.getenv("SESSION_SECRET")
+    if not secret_key:
+        secret_path = os.getenv("SESSION_SECRET_FILE", os.path.join("data", "session_secret.key"))
+        secret_key = _load_or_create_secret(secret_path)
     app.add_middleware(
         SessionMiddleware,
-        secret_key=SECRET_KEY,
+        secret_key=secret_key,
         same_site="lax",
         session_cookie="cousinade_session",
     )
@@ -101,6 +120,50 @@ def get_current_user(request: Request, db: Session) -> Member | None:
     return db.get(Member, uid) if uid else None
 
 
+def _escape_vcard(text: str) -> str:
+    if not text:
+        return ""
+    return (text.replace("\\", "\\\\")
+                .replace(";", r"\;")
+                .replace(",", r"\,")
+                .replace("\n", r"\n"))
+
+
+def _slugify_filename(value: str, fallback: str = "contact") -> str:
+    norm = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", norm).strip("_")
+    return cleaned.lower() or fallback
+
+
+def _member_to_vcard(member: Member) -> str:
+    full_name = f"{member.first_name or ''} {member.last_name or ''}".strip()
+    lines = [
+        "BEGIN:VCARD",
+        "VERSION:3.0",
+        f"FN:{_escape_vcard(full_name)}",
+        f"N:{_escape_vcard(member.last_name or '')};{_escape_vcard(member.first_name or '')};;;",
+    ]
+
+    if member.email:
+        lines.append(f"EMAIL;TYPE=INTERNET:{_escape_vcard(member.email)}")
+
+    if member.phone:
+        phone = re.sub(r"[^0-9+]+", "", member.phone)
+        lines.append(f"TEL;TYPE=CELL,VOICE:{_escape_vcard(phone)}")
+
+    if member.address or member.postal_code or member.city:
+        adr = _escape_vcard(member.address or "")
+        city = _escape_vcard(member.city or "")
+        postal = _escape_vcard(member.postal_code or "")
+        lines.append(f"ADR;TYPE=HOME:;;{adr};{city};;{postal};")
+
+    if member.birth_date:
+        lines.append(f"BDAY:{member.birth_date.strftime('%Y%m%d')}")
+
+    lines.append("END:VCARD")
+    return "\r\n".join(lines) + "\r\n"
+
+
 # ---- Annuaire
 @app.get("/", response_class=HTMLResponse)
 def directory(request: Request, q: str | None = None, db: Session = Depends(get_db)):
@@ -115,7 +178,7 @@ def directory(request: Request, q: str | None = None, db: Session = Depends(get_
             (Member.first_name.ilike(like)) |
             (Member.last_name.ilike(like))
         )
-    members = db.scalars(stmt.order_by(Member.last_name, Member.first_name)).all()
+    members = db.scalars(stmt.order_by(Member.first_name, Member.last_name)).all()
     tpl = templates.get_template("directory.html")
     return tpl.render(request=request, members=members, q=q or "", user=user)
 
@@ -135,6 +198,23 @@ def member_card(request: Request, member_id: int, db: Session = Depends(get_db))
     partners = {*(c.partner_a if c.partner_a_id != m.id else c.partner_b for c in (m.couples_a + m.couples_b))}
     tpl = templates.get_template("member.html")
     return tpl.render(request=request, m=m, children=children, partners=partners, user=user)
+
+
+@app.get("/member/{member_id}/vcard")
+def member_vcard(request: Request, member_id: int, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    member = db.get(Member, member_id)
+    if not member:
+        raise HTTPException(404, "Membre introuvable")
+
+    vcard_content = _member_to_vcard(member)
+    slug_base = f"{member.first_name or ''}_{member.last_name or ''}"
+    filename = f"{_slugify_filename(slug_base)}.vcf"
+    headers = {"Content-Disposition": f"attachment; filename=\"{filename}\""}
+    return Response(content=vcard_content, media_type="text/vcard", headers=headers)
 
 # ---- Edition via lien sécurisé
 @app.get("/edit", response_class=HTMLResponse)
@@ -465,5 +545,3 @@ async def rsvp_save(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
     return RedirectResponse(url="/rsvp", status_code=status.HTTP_303_SEE_OTHER)
-
-

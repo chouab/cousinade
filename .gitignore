@@ -141,3 +141,4 @@ Thumbs.db
 #La database
 cousinade.db
 media/*
+data/session_secret.key
