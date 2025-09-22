@@ -1,6 +1,6 @@
 # app/main.py
 
-import secrets, datetime, json, os, io, re, unicodedata
+import secrets, datetime, json, os, io, re, unicodedata, logging
 from datetime import date
 
 from PIL import Image, ImageOps
@@ -23,6 +23,32 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
+def _configure_logging() -> None:
+    fmt = os.getenv("LOG_FORMAT", "%(asctime)s %(levelname)s [%(name)s] %(message)s")
+    datefmt = os.getenv("LOG_DATEFMT", "%Y-%m-%d %H:%M:%S")
+    level_name = os.getenv("LOG_LEVEL", "INFO").upper()
+    formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
+
+    root_logger = logging.getLogger()
+    level_value = getattr(logging, level_name, logging.INFO)
+    root_logger.setLevel(level_value)
+
+    if not root_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        root_logger.addHandler(handler)
+    else:
+        for handler in root_logger.handlers:
+            handler.setFormatter(formatter)
+
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        logger = logging.getLogger(name)
+        if logger.handlers:
+            logger.setLevel(level_value)
+            for handler in logger.handlers:
+                handler.setFormatter(formatter)
+
+
 def _load_or_create_secret(path: str) -> str:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     try:
@@ -40,6 +66,7 @@ def _load_or_create_secret(path: str) -> str:
 
 
 def create_app() -> FastAPI:
+    _configure_logging()
     app = FastAPI()
 
     # 1) Session d'abord
